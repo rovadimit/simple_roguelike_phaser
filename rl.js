@@ -35,7 +35,7 @@ var game = new Phaser.Game(COLS * 60, ROWS * 60, Phaser.AUTO, null, { preload: p
 function preload() {
 	// preload the assets
 	game.load.image('background', 'assets/bg_castle.png');
-	game.load.image('wall', 'assets/castleCenter.png');
+	game.load.image('tile', 'assets/castleCenter.png');
 	game.load.image('alien_big', 'assets/alienGreenBig.png');
 	game.load.image('alien_small', 'assets/alienGreenSmall.png');
 	game.load.image('slime', 'assets/slimeBlue_blue.png');
@@ -51,46 +51,34 @@ function create() {
 	// add the background
 	background = game.add.sprite(0, 0, 'background');
 
-	// TEST the walls group contains the walls(!)
-	walls = game.add.group();
-
-	// TEST enabling physics for any object in the walls group
-	walls.enableBody = true;
-
-	// TEST creating one wall
-	var wall = walls.create(300, 300, 'wall');
-
-	wall.body.immovable = true; 
-
 	// TEST add the player
-	player = game.add.sprite(100, 100, 'alien_big');
+	//player = game.add.sprite(120, 120, 'alien_big');
 
 	// enabling the physics on the player
-	game.physics.arcade.enable(player);
+	//game.physics.arcade.enable(player);
 
-	player.body.collideWorldBounds = true;
+	//player.body.collideWorldBounds = true;
 
 	// our controls
 	cursors = game.input.keyboard.createCursorKeys();
 
 	// initialize map
-	//initMap();
+	initMap();
 
 	// initialize screen
-	//-------------------------------------
-	//screen = [];
-	//for (var y = 0; y < ROWS; y++) {
-	//	var newRow = [];
-	//	screen.push(newRow);
-	//	for (var x = 0; x < COLS; x++)
-	//		newRow.push(initCell('', x, y));
-	//}
+	screen = [];
+	for (var y = 0; y < ROWS; y++) {
+		var newRow = [];
+		screen.push(newRow);
+		for (var x = 0; x < COLS; x++)
+			newRow.push(initCell('', x, y));
+	}
 
 	// initialize actors
-	//initActors();
+	initActors();
 
 	// draw level
-	//drawMap();
+	drawMap();
 	//drawActors();
 }
 
@@ -104,52 +92,58 @@ function update() {
 
 	if (cursors.left.isDown) {
 		// move to the left
-		player.body.velocity.x = -150;
+		player.body.velocity.x = -120;
 	}
 	else if (cursors.right.isDown) {
 		// move to the right
-		player.body.velocity.x = 150;
+		player.body.velocity.x = 120;
 	}
 	else if (cursors.up.isDown) {
 		// move up
-		player.body.velocity.y = -150;
+		player.body.velocity.y = -120;
 	}
 	else if (cursors.down.isDown) {
 		// move down
-		player.body.velocity.y = 150;
+		player.body.velocity.y = 120;
 	}
 }
 
 function initCell(chr, x, y) {
 	// add a single cell in a given position to the ascii display
-	//var style = {
-	//	font: FONT + "px monospace",
-	//	fill: "#fff"
-	//};
-	//return game.add.text(FONT * 0.6 * x, FONT * y, chr, style);
+	var style = {
+		font: FONT + "px monospace",
+		fill: "#fff"
+	};
+	return game.add.text(FONT * 0.6 * x, FONT * y, chr, style);
 }
 
-//-------------------------------------------------
-//TO BE MAP OF PICTURES
 function initMap() {
+	// the walls group contains the tiles(!)
+	walls = game.add.group();
+
+	// enabling physics for any object in the walls group
+	walls.enableBody = true;
+
 	// create a new random map
-	//map = [];
-	//for (var y = 0; y < ROWS; y++) {
-	//	var newRow = [];
-	//	for (var x = 0; x < COLS; x++) {
-	//		if (Math.random() > 0.8) 
-	//			newRow.push('#');
-	//		else 
-	//			newRow.push('.');
-	//	}
-	//	map.push(newRow);
-	//}
+	map = [];
+
+	for (var y = 0; y < ROWS; y++) {
+		var newRow = [];
+		for (var x = 0; x < COLS; x++) {
+			if (Math.random() > 0.8) {
+				var tile = walls.create(x*60, y*60, 'tile');
+				tile.body.immovable = true;
+				newRow.push(tile);
+			}
+		}
+		map.push(newRow);
+	}
 }
 
 function drawMap() {
-	//for (var y = 0; y < ROWS; y++)
-	//	for (var x = 0; x < COLS; x++)
-	//		screen[y][x].content = map[y][x];
+	for (var y = 0; y < ROWS; y++)
+		for (var x = 0; x < COLS; x++)
+			screen[y][x].content = map[y][x];
 }
 
 function randomInt(max) {
@@ -159,29 +153,32 @@ function randomInt(max) {
 //------------------------------------------------
 function initActors() {
 	// create actors at random locations
-	//actorList = [];
-	//actorMap = {};
-	//for (var e = 0; e < ACTORS; e++) {
+	actorList = [];
+	actorMap = {};
+	for (var e = 0; e < ACTORS; e++) {
 		// create new actor
-	//	var actor = {
-	//		x: 0,
-	//		y: 0,
-	//		hp: e == 0 ? 3 : 1
-	//	};
-	//	do {
+		var actor = {
+			x: 0,
+			y: 0,
+			hp: e == 0 ? 3 : 1
+		};
+		do {
 			// pick a random position that is both a floor and not occupied
-	//		actor.y = randomInt(ROWS);
-	//		actor.x = randomInt(COLS);
-	//	} while (map[actor.y][actor.x] == '#' || actorMap[actor.y + "_" + actor.x] != null);
-
+			actor.y = randomInt(ROWS);
+			actor.x = randomInt(COLS);
+		} while (map[actor.y][actor.x] == 'tile' || actorMap[actor.y + "_" + actor.x] != null);
+		//^NOT TILE
+		
 		// add references to the actor to the actors list & map
-	//	actorMap[actor.y + "_" + actor.x] = actor;
-	//	actorList.push(actor);
-	//}
+		actorMap[actor.y + "_" + actor.x] = actor;
+		actorList.push(actor);
+	}
 
 	// the player is the first actor in the list
-	//player = actorList[0];
-	//livingEnemies = ACTORS - 1;
+	player = actorList[0];
+	game.physics.arcade.enable(player);
+	player.body.collideWorldBounds = true;
+	livingEnemies = ACTORS - 1;
 }
 
 //-------------------------------------------------
@@ -246,23 +243,23 @@ function onKeyUp(event) {
 	
 	// act on player input
 	//var acted = false;
-	//switch (event.keyCode) {
-	//	case Phaser.Keyboard.LEFT:
+	switch (event.keyCode) {
+		case Phaser.Keyboard.LEFT:
 	//		acted = moveTo(player, {x:-1, y:0});
 	//		break;
 			
-	//	case Phaser.Keyboard.RIGHT:
+		case Phaser.Keyboard.RIGHT:
 	//		acted = moveTo(player,{x:1, y:0});
 	//		break;
 			
-	//	case Phaser.Keyboard.UP:
+		case Phaser.Keyboard.UP:
 	//		acted = moveTo(player, {x:0, y:-1});
 	//		break;
 
-	//	case Phaser.Keyboard.DOWN:
+		case Phaser.Keyboard.DOWN:
 	//		acted = moveTo(player, {x:0, y:1});
 	//		break;
-	//}
+	}
 	
 	// enemies act every time the player does
 	//if (acted)
