@@ -34,7 +34,7 @@ function preload() {
 	// preload the assets
 	game.load.image('background', 'assets/bg_castle.png');
 	game.load.image('tile', 'assets/castleCenter.png');
-	game.load.image('floor', 'assets/snowCenter.png');
+	game.load.image('floor', 'assets/snowCenter.png');	
 	game.load.image('alien_small', 'assets/alienGreenSmall.png');
 	game.load.image('slime', 'assets/slimeBlue_blue.png');
 }
@@ -55,7 +55,6 @@ function create() {
 		var newRow = [];
 		screen.push(newRow);
 		for (var x = 0; x < COLS; x++)
-			// newRow.push(initCell('', x, y));
 			newRow.push('');
 	}
 
@@ -69,7 +68,6 @@ function create() {
 
 function update() {
 }
-
 
 function initMap() {
 	// the walls group contains the tiles
@@ -134,26 +132,144 @@ function initActors() {
 
 	// the player is the first actor in the list
 	player = actorList[0];
+	game.physics.arcade.enable(player);
+
 	livingEnemies = ACTORS - 1;
 }
 
 function drawActors() {
 	for (var a in actorList) {
-		if (actorList[a] != null && actorList[a].hp > 0) 
-			screen[actorList[a].y][actorList[a].x].content = a == 0 ? game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'alien_small') : game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'slime');;
+		if (actorList[a] != null && actorList[a].hp > 0) {
+			screen[actorList[a].y][actorList[a].x].content = a == 0 ? game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'alien_small') : game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'slime');
+		}
 	}
 }
 
+function canGo(actor,dir) {
+	return 	actor.x + dir.x >= 0 &&
+			actor.x + dir.x <= COLS - 1 &&
+			actor.y + dir.y >= 0 &&
+			actor.y + dir.y <= ROWS - 1 &&
+			map[actor.y + dir.y][actor.x + dir.x].key != 'tile';
+}
+
+function moveTo(actor, dir) {
+	// check if actor can move in the given direction
+	if (!canGo(actor, dir)) 
+		return false;
+	
+	// moves actor to the new location
+	console.log("actor.x = " + actor.x + " actor.y = " + actor.y + " dir.x = " + dir.x + " dir.y = " + dir.y);
+	
+	var newKey = (actor.y + dir.y) +'_' + (actor.x + dir.x);
+	// if the destination tile has an actor in it 
+	if (actorMap[newKey] != null) {
+		console.log("destination nas an actor");
+	// 	decrement hitpoints of the actor at the destination tile
+		var victim = actorMap[newKey];
+		console.log("victim.hp = " + victim.hp);
+		victim.hp--;
+		
+	// 	if it's dead remove its reference 
+		if (victim.hp == 0) {
+			actorMap[newKey] = null;
+			actorList[actorList.indexOf(victim)] = null;
+
+			if(victim != player) {
+				livingEnemies--;
+				if (livingEnemies == 0) {
+					// victory message
+					var victory = game.add.text(game.world.centerX, game.world.centerY, 'Victory!\nCtrl+r to restart', { fill : '#ff0059', align: "center" } );
+					victory.anchor.setTo(0.5, 0.5);
+				}
+			}
+		}
+	} else {
+		console.log("destination doesn't have an actor");
+	// 	remove reference to the actor's old position
+		actorMap[actor.y + '_' + actor.x] = null;
+		
+		// update position
+		actor.y += dir.y;
+		actor.x += dir.x;
+
+	// 	add reference to the actor's new position
+		actorMap[actor.y + '_' + actor.x] = actor;
+	}
+	return true;
+}
 
 function onKeyUp(event) {
-
+	// draw map to overwrite previous actors positions
+	drawMap();
+	
+	// act on player input
+	var acted = false;
 	switch (event.keyCode) {
 		case Phaser.Keyboard.LEFT:
+			acted = moveTo(player, {x:-1, y:0});
+			break;
 			
 		case Phaser.Keyboard.RIGHT:
+			acted = moveTo(player,{x:1, y:0});
+			break;
 			
 		case Phaser.Keyboard.UP:
+			acted = moveTo(player, {x:0, y:-1});
+			break;
 
 		case Phaser.Keyboard.DOWN:
+			acted = moveTo(player, {x:0, y:1});
+			break;
+	}
+	
+	// enemies act every time the player does
+	if (acted)
+		for (var enemy in actorList) {
+			// skip the player
+			if(enemy == 0)
+				continue;
+			
+			var e = actorList[enemy];
+			if (e != null)
+				aiAct(e);
+		}
+	
+	// draw actors in new positions
+	drawActors();
+}
+
+function aiAct(actor) {
+	var directions = [ { x: -1, y:0 }, { x:1, y:0 }, { x:0, y: -1 }, { x:0, y:1 } ];	
+	var dx = player.x - actor.x;
+	var dy = player.y - actor.y;
+	
+	// if player is far away, walk randomly
+	if (Math.abs(dx) + Math.abs(dy) > 6)
+		// try to walk in random directions until you succeed once
+		while (!moveTo(actor, directions[randomInt(directions.length)])) { };
+	
+	// otherwise walk towards player
+	if (Math.abs(dx) > Math.abs(dy)) {
+		if (dx < 0) {
+			// left
+			moveTo(actor, directions[0]);
+		} else {
+			// right
+			moveTo(actor, directions[1]);
+		}
+	} else {
+		if (dy < 0) {
+			// up
+			moveTo(actor, directions[2]);
+		} else {
+			// down
+			moveTo(actor, directions[3]);
+		}
+	}
+	if (player.hp < 1) {
+		// game over message
+		var gameOver = game.add.text(game.world.centerX, game.world.centerY, 'Game Over\nCtrl+r to restart', { fill : '#e22', align: "center" } );
+		gameOver.anchor.setTo(0.5,0.5);
 	}
 }
