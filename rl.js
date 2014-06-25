@@ -32,17 +32,11 @@ var game = new Phaser.Game(COLS * 60, ROWS * 60, Phaser.AUTO, null, { preload: p
 
 function preload() {
 	// preload the assets
-	game.load.image('background', 'assets/background.png');
-	game.load.image('tile', 'assets/tile.png');
-	game.load.image('floor', 'assets/floor.png');
-	game.load.image('alien', 'assets/alien.png');
-	game.load.image('alien', 'assets/alien_walk.png');
-	game.load.image('slime', 'assets/slime.png');
-	game.load.image('slime', 'assets/slime_walk.png');
-	game.load.image('slime', 'assets/slime_dead.png');
-	game.load.image('slime', 'assets/worm.png');
-	game.load.image('slime', 'assets/worm_walk.png');
-	game.load.image('slime', 'assets/worm_dead.png');
+	game.load.image('background', 'assets/bg_castle.png');
+	game.load.image('tile', 'assets/castleCenter.png');
+	game.load.image('floor', 'assets/snowCenter.png');	
+	game.load.image('alien_small', 'assets/alienGreenSmall.png');
+	game.load.image('slime', 'assets/slimeBlue_blue.png');
 }
 
 function create() {
@@ -76,7 +70,11 @@ function update() {
 }
 
 function initMap() {
-	
+	// the walls group contains the tiles
+	walls = game.add.group();
+
+	// enabling physics for any object in the walls group
+	walls.enableBody = true;
 
 	// create a new random map
 	map = [];
@@ -85,10 +83,14 @@ function initMap() {
 		var newRow = [];
 		for (var x = 0; x < COLS; x++) {
 			if (Math.random() > 0.8) {
-				newRow.push('tile');
+				var tile = walls.create(x*60, y*60, 'tile');
+				game.physics.arcade.enable(tile);
+				tile.body.immovable = true;
+				newRow.push(tile);
 			}
 			else {
-				newRow.push('floor');
+				var tile = walls.create(x*60, y*60, 'floor');
+				newRow.push(tile);
 			}
 		}
 		map.push(newRow);
@@ -96,15 +98,9 @@ function initMap() {
 }
 
 function drawMap() {
-	// the walls group contains the tiles
-	walls = game.add.group();
-
-	// enabling physics for any object in the walls group
-	walls.enableBody = true;
-
 	for (var y = 0; y < ROWS; y++)
 		for (var x = 0; x < COLS; x++) {
-			screen[y][x].content = walls.create(x*60, y*60, map[y][x]);
+			screen[y][x].content = map[y][x];
 		}
 }
 
@@ -127,7 +123,7 @@ function initActors() {
 			// pick a random position that is both a floor and not occupied
 			actor.y = randomInt(ROWS);
 			actor.x = randomInt(COLS);
-		} while (map[actor.y][actor.x] == 'tile' || actorMap[actor.y + "_" + actor.x] != null);
+		} while (map[actor.y][actor.x].key == 'tile' || actorMap[actor.y + "_" + actor.x] != null);
 		
 		// add references to the actor to the actors list & map
 		actorMap[actor.y + "_" + actor.x] = actor;
@@ -136,21 +132,15 @@ function initActors() {
 
 	// the player is the first actor in the list
 	player = actorList[0];
+	game.physics.arcade.enable(player);
 
 	livingEnemies = ACTORS - 1;
 }
 
-//-------------------------------------------------
-function drawActors() {	
+function drawActors() {
 	for (var a in actorList) {
 		if (actorList[a] != null && actorList[a].hp > 0) {
-
-			screen[actorList[a].y][actorList[a].x].content = a == 0 ? game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'alien') : game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'slime');
-
-			if (a.key == 'alien_walk') {
-				a.animations.add('left', [0, 1, 2, 3, 4, 5], 10, true);
-				a.animations.add('right', [7, 8, 9, 10, 11], 10, true);
-			}
+			screen[actorList[a].y][actorList[a].x].content = a == 0 ? game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'alien_small') : game.add.sprite(actorList[a].x * 60, actorList[a].y * 60, 'slime');
 		}
 	}
 }
@@ -160,7 +150,7 @@ function canGo(actor,dir) {
 			actor.x + dir.x <= COLS - 1 &&
 			actor.y + dir.y >= 0 &&
 			actor.y + dir.y <= ROWS - 1 &&
-			map[actor.y + dir.y][actor.x + dir.x] != 'tile';
+			map[actor.y + dir.y][actor.x + dir.x].key != 'tile';
 }
 
 function moveTo(actor, dir) {
@@ -174,7 +164,7 @@ function moveTo(actor, dir) {
 	var newKey = (actor.y + dir.y) +'_' + (actor.x + dir.x);
 	// if the destination tile has an actor in it 
 	if (actorMap[newKey] != null) {
-		console.log("destination has an actor");
+		console.log("destination nas an actor");
 	// 	decrement hitpoints of the actor at the destination tile
 		var victim = actorMap[newKey];
 		console.log("victim.hp = " + victim.hp);
